@@ -1,0 +1,263 @@
+---
+title: "Capstone Project: Bellabeat Marketing Strategy Analysis"
+author: "Ryan Tang"
+date: "2024-05-31"
+output: html_document
+---
+
+## Executive Summary
+**Case Study:** Bellabeat Smart Device Usage Analysis
+
+**Scenario:** As a junior data analyst for Bellabeat, a high-tech manufacturer of health-focused products for women, I have been tasked with analyzing smart device fitness data. The goal is to unlock new growth opportunities by understanding consumer usage patterns of non-Bellabeat smart devices. These insights will inform high-level marketing strategies presented to the executive team, including Urška Sršen (Co-founder and CCO).
+
+### Phase 1: Ask
+
+**Business Task:**
+Analyze smart device usage data from non-Bellabeat products (Fitbit) to identify consumer trends. These insights will be used to guide Bellabeat's marketing strategy, aiming to position the company as a major contender in the global smart device market.
+
+**Primary Objectives:**
+1. Identify trends in smart device usage.
+2. Determine how these trends apply to Bellabeat's target clientele.
+3. Formulate data-driven marketing strategies to enhance consumer engagement and growth.
+
+**Key Stakeholders:**
+
+- Urška Sršen (Co-founder and CCO)
+- Sando Mur (Co-founder and Executive Team)
+- Bellabeat Marketing Analytics Team
+
+### Phase 2: Prepare
+
+**Data Source:** The analysis utilizes the [FitBit Fitness Tracker Data](https://www.kaggle.com/datasets/arashnic/fitbit) (CC0: Public Domain), retrieved from Kaggle. This dataset comprises personal fitness tracker logs from thirty Fitbit users who consented to the submission of their personal tracker data.
+
+**Data Structure:** The dataset spans two periods (12/03/2016 – 12/05/2016) and includes 11 CSV files detailing metrics such as heart rate, steps, and caloric expenditure. The data is structured in a long format.
+
+**Data Credibility & Integrity Analysis (ROCCC):**
+
+- Reliability: Low. The sample size (n=30) is small, limiting the ability to generalize findings to a broader population.
+- Originality: Low. Data was collected via a third party (Amazon Mechanical Turk), necessitating scrutiny regarding data provenance.
+- Comprehensive: Moderate. While the dataset offers diverse metrics (steps, calories, activity intensity), it lacks demographic context (age, gender, location).
+- Current: Low. The data originates from 2016; user behaviors and wearable technology have likely evolved since then.
+- Cited: Low. As third-party data, the original collection methodology is not fully transparent.
+
+### Phase 3: Process
+
+The `dailyActivity_merged.csv` file was selected for the primary analysis regarding daily usage patterns.
+
+#### 3.1 Environment Setup
+Loading necessary packages for data manipulation, cleaning, and analysis.
+#### Load libraries
+```{r}
+library(tidyverse)
+library(skimr)
+library(janitor)
+```
+
+#### Data Import
+```{r}
+dailyact <- read.csv("dailyActivity_merged.csv")
+```
+
+#### Data Inspection
+Previewing the dataset structure and content.
+```{r}
+head(dailyact)
+```
+
+#### Data Summaries
+Generating an overview of column distributions and missing values.
+```{r}
+skim_without_charts(dailyact)
+```
+
+#### Column Validation
+```{r}
+colnames(dailyact)
+```
+
+**Observation**: Initial inspection reveals no null values. However, a review of schema definitions is required to ensure data types align with analysis needs.
+
+#### Schema Verification
+```{r}
+glimpse(dailyact)
+```
+
+**Correction Required**: The `ActivityDate` column is currently stored as a character string. For temporal analysis, this must be converted to a Date object.
+
+#### Data Type Conversion
+```{r}
+dailyact$ActivityDate <- as.Date(dailyact$ActivityDate, "%m/%d/%Y")
+```
+
+That looks better. To be able to gain more insights from this data, we can extract even more information from the date data type.
+
+
+#### Feature Engineering
+To facilitate granular analysis, we will extract specific temporal attributes (Month, Day, Day of Week).
+```{r}
+dailyact <- dailyact %>% 
+  mutate(Month = format(ActivityDate, "%m")) %>%
+  mutate(Day = format(ActivityDate, "%d")) %>%
+  mutate(Day_of_week = wday(ActivityDate, label=TRUE))
+```
+
+#### Standardization
+Standardizing column names to snake_case for consistency and readability.
+```{r}
+dailyact <- dailyact %>%
+  clean_names()
+```
+
+### Phase 4: Analyze
+
+With the data cleaned and formatted, we proceed to exploratory data analysis (EDA) to uncover distribution patterns and outliers.
+
+#### Unique Identifier Check
+```{r}
+n_distinct(dailyact$id)
+```
+
+**Note**: There are 35 distinct user IDs, which contradicts the initial dataset description of 30 users. This discrepancy suggests additional data points were merged or metadata was inaccurate.
+
+#### Summary Statistics
+```{r}
+dailyact %>%
+  select(total_steps, total_distance,very_active_distance,
+         moderately_active_distance, light_active_distance,
+         sedentary_active_distance, very_active_minutes,
+         fairly_active_minutes, lightly_active_minutes,
+         sedentary_minutes, calories) %>%
+  summary()
+```
+
+**Interpretation**:
+* Activity Levels: The average daily step count is 6,547, with an average caloric burn of 2,189.
+* Sedentary Behavior: Users spend a significant portion of their day in sedentary states (avg. 995 minutes/approx. 16.5 hours), significantly outweighing active minutes.
+
+#### Aggregation by Day of Week
+Analyzing weekly performance trends.
+```{r}
+dailyact %>%
+  group_by(day_of_week) %>%
+  summarise(average_steps = mean(total_steps),
+            average_calories = mean(calories))
+```
+
+**Observation**: Step counts and caloric burn remain relatively stable throughout the week, with a minor variance observed on Tuesdays.
+
+#### Activity Intensity by Day of Week
+```{r}
+dailyact %>%
+  group_by(day_of_week) %>%
+  summarise(average_active = mean(very_active_minutes),
+            average_fairly_active = mean(fairly_active_minutes),
+            average_lightly_active = mean(lightly_active_minutes),
+            average_sedentary = mean(sedentary_minutes))
+```
+
+**Observation**: Activity intensity mirrors the step trends, with weekends showing slightly elevated activity levels compared to mid-week.
+
+### Phase 5: Share
+This section visualizes the relationships between activity metrics to derive actionable insights.
+
+#### Correlation: Steps vs. Calories
+```{r}
+ggplot(dailyact, mapping=aes(x = total_steps, y = calories)) +
+  geom_point(color = '#799FCB', alpha = 0.6) + 
+  geom_smooth(method = 'lm', color = '#F9665E', se = FALSE) + 
+  labs(title = 'Relationship between Total Steps and Calories Burned', 
+       caption = 'Data from: March 2016 to April 2016',
+       x = 'Total Steps',
+       y = 'Calories Burned') +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 12, face = 'bold'),
+    axis.title = element_text(size = 10),
+    axis.text = element_text(size = 9)
+  )
+```
+
+**Insight**: As expected, a strong positive correlation exists between total steps and calories burned. This establishes a baseline validity for the dataset and emphasizes the value of step-tracking features for weight management goals.
+
+#### Distribution of Activity Types
+```{r}
+#Get summary data
+summary_data <- dailyact %>%
+  group_by(day_of_week) %>%
+  summarise(average_active = mean(very_active_minutes, na.rm = TRUE),
+    average_fairly_active = mean(fairly_active_minutes, na.rm = TRUE),
+    average_lightly_active = mean(lightly_active_minutes, na.rm =
+    TRUE), average_sedentary = mean(sedentary_minutes, na.rm = TRUE))
+
+#Reshape into long format
+long_data <- summary_data %>%
+  pivot_longer(cols = starts_with("average_"), names_to = "activity_type", values_to = "average_minutes")
+
+#Rename for better readability
+long_data$activity_type <- recode(long_data$activity_type, "average_active" = "Very Active", "average_fairly_active" = "Fairly Active", "average_lightly_active" = "Lightly Active", "average_sedentary" = "Sedentary")
+
+#Plot graph
+ggplot(long_data, aes(x = day_of_week, y = average_minutes, fill = activity_type)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  coord_flip() + 
+  labs(title = 'Average Daily Activity by Day of the Week', caption = 'Data from: March 2016 to April 2016', x = 'Day of the Week', y = 'Average Minutes', fill = 'Activity Type') +
+  theme_minimal()
+```
+
+**Insight**: The user base is predominantly sedentary or lightly active. "Fairly active" and "Very active" intervals constitute a marginal fraction of the day. This suggests a market opportunity to target users who are struggling to break sedentary habits.
+
+#### Sedentary Behavior vs. Total Steps
+```{r}
+ggplot(dailyact, mapping=aes(x = sedentary_minutes, y = total_steps)) +
+  geom_point(color = '#0072B2', alpha = 0.6) + 
+  geom_smooth(method = 'lm', color = '#E69F00', se = FALSE) + 
+  labs(title = 'Relationship between Sedentary Time and Total Steps', caption = 'Data from: March 2016 to April 2016', x = 'Sedentary Time', y = 'Total Steps') +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 12, face = 'bold'),
+    axis.title = element_text(size = 10),
+    axis.text = element_text(size = 9)
+  )
+```
+
+**Insight**: A negative correlation is observed: higher sedentary time is associated with lower daily step counts.
+
+#### Light Activity vs. Total Steps
+```{r}
+ggplot(dailyact, mapping=aes(x = lightly_active_minutes, y = total_steps)) +
+  geom_point(color = '#56B4E9', alpha = 0.6) + 
+  geom_smooth(method = 'lm', color = '#D55E00', se = FALSE) + 
+  labs(title = 'Relationship between Lightly Active Time and Total Steps', caption = 'Data from: March 2016 to April 2016', x = 'Lightly Active Time', y = 'Total Steps') +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 12, face = 'bold'),
+    axis.title = element_text(size = 10),
+    axis.text = element_text(size = 9)
+  )
+```
+
+**Insight**: A strong positive correlation exists here. This indicates that "light activity" (e.g., walking, doing chores) is a primary driver of total daily steps for this demographic, rather than high-intensity workouts.
+
+## Phase 6: Act
+
+Based on the analysis of user trends, the following strategies are recommended to enhance Bellabeat’s marketing approach:
+
+1. "Step Up for Health" Campaign:
+- Rationale: The data confirms a direct link between steps and caloric burn.
+- Action: Launch a campaign gamifying daily step counts. Use in-app challenges and push notifications to encourage users to beat their previous day's record, emphasizing the caloric benefits.
+
+2. Focus on Low-Barrier Entry (Light Activity):
+- Rationale: Users are most responsive to "light activity" as a driver of steps, rather than intense exercise.
+- Action: Develop content that promotes "hidden exercise"—taking the stairs, walking during calls, or short breaks. Position Bellabeat products not just for athletes, but for the everyday woman looking to reduce sedentary time.
+
+3. Sedentary Lifestyle Education:
+- Rationale: The high volume of sedentary minutes presents a health risk and a user pain point.
+- Action: Implement "Inactivity Alerts" in the Bellabeat app (e.g., "You've been sitting for 60 minutes, time to stretch"). Back this up with educational blog posts and infographics detailing the health risks of prolonged sitting and the benefits of micro-movements.
+
+
+
+
+
+
+
+
