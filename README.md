@@ -3,7 +3,7 @@
 ![R](https://img.shields.io/badge/Language-R-276DC3?logo=r)
 ![Tidyverse](https://img.shields.io/badge/Tidyverse-Core-C13737?logo=rstudio)
 ![Status](https://img.shields.io/badge/Status-Completed-success)
-[![View Report](https://img.shields.io/badge/HTML-View_Report-E34F26?logo=html5&style=flat)](Bellabeat_Analysis.html)
+[![View Report](https://img.shields.io/badge/HTML-View_Report-E34F26?logo=html5&style=flat)](capstone_project.html)
 
 ## 📌 Abstract
 Bellabeat, a high-tech manufacturer of health-focused products for women, seeks to become a larger player in the global smart device market. This project analyzes smart device fitness data from non-Bellabeat products (Fitbit) to identify consumer usage trends. The goal is to translate these patterns into high-level marketing strategies for the Bellabeat executive team.
